@@ -3,6 +3,8 @@ package com.example.community.service;
 import com.example.community.model.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.Map;
+
 /**
 * @author 86133
 * @description 针对表【user】的数据库操作Service
@@ -10,5 +12,6 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface UserService extends IService<User> {
     User findUserById(int userId);
+    Map<String,Object> register(User user);
 
 }
