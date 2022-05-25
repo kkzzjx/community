@@ -1,10 +1,12 @@
 package com.example.community.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.community.model.User;
 import com.example.community.service.UserService;
 import com.example.community.mapper.UserMapper;
+import com.example.community.utils.CommunityConstant;
 import com.example.community.utils.CommunityUtil;
 import com.example.community.utils.MailClient;
 import org.apache.commons.lang3.StringUtils;
@@ -24,7 +26,7 @@ import java.util.*;
 */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
-    implements UserService{
+    implements UserService, CommunityConstant {
     @Resource
     UserMapper userMapper;
 
@@ -47,7 +49,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public Map<String,Object> register(User user){
+    public Map<String,Object> register(User user) {
         Map<String,Object> map=new HashMap<>();
         // 各个属性都要存在
         if(user==null){
@@ -78,6 +80,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         queryWrapper2.eq("email",user.getEmail());
         if(!userMapper.selectList(queryWrapper2).isEmpty()){
             map.put("emailMsg","邮箱重复");
+            return map;
         }
 
 
@@ -105,6 +108,29 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         mailClient.sendMail(user.getEmail(),"Welcome to nowcoder!",con);
 
         return map;
+    }
+
+    /**
+     * 激活 判断这个用户是否需要激活，然后操作
+     * @param userId
+     * @param code
+     * @return
+     */
+
+    @Override
+    public int activation(int userId,String code){
+        User user=userMapper.selectById(userId);
+        if(user.getStatus()==1){
+            return ACTIVATION_REPEAT;
+        }else if(user.getActivationCode().equals(code)){
+            user.setStatus(1);
+            userMapper.updateById(user);
+            return ACTIVATION_SUCCESS;
+        }else{
+            return ACTIVATION_FAIL;
+        }
+
+
     }
 
 
