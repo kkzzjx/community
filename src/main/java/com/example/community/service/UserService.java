@@ -36,4 +36,15 @@ public interface UserService extends IService<User> {
 
     int activation(int userId,String code);
 
+
+    /**
+     * 登录
+     * @param username
+     * @param password
+     * @return 返回的结果用map记录
+     */
+    Map<String,Object> Login(String username,String password,int expiredSeconds);
+
+    public void logout(String ticket);
+
 }

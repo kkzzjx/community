@@ -3,6 +3,8 @@ package com.example.community.service.impl;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.community.mapper.LoginTicketMapper;
+import com.example.community.model.LoginTicket;
 import com.example.community.model.User;
 import com.example.community.service.UserService;
 import com.example.community.mapper.UserMapper;
@@ -27,8 +29,11 @@ import java.util.*;
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     implements UserService, CommunityConstant {
+
     @Resource
     UserMapper userMapper;
+    @Resource
+    LoginTicketMapper loginTicketMapper;
 
     @Autowired
     private MailClient mailClient;
@@ -101,7 +106,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         //发送html邮件 activation.html
         Context context=new Context();
         context.setVariable("email",user.getEmail());
-        // http://localhost:8080/activation/101/code
+        // http://localhost:8080/community/activation/101/code
         context.setVariable("url",domain+contextPath+"activation/"+user.getId().toString()+"/"+user.getActivationCode().toString());
 
         String con=templateEngine.process("/mail/activation",context);
@@ -112,8 +117,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     /**
      * 激活 判断这个用户是否需要激活，然后操作
-     * @param userId
-     * @param code
+     * @param userId 用户id
+     * @param code 激活状态码
      * @return
      */
 
@@ -132,6 +137,55 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
 
     }
+
+
+    /**
+     * 登录
+     * @param username 用户名
+     * @param password 密码
+     * @param expiredSeconds 超时时间
+     * @return 返回的结果用map记录
+     */
+    @Override
+    public Map<String,Object> Login(String username,String password,int expiredSeconds){
+        Map<String,Object> map=new HashMap<>();
+        if(StringUtils.isBlank(username)){
+            map.put("usernameMsg","用户名不能为空");
+            return map;
+        }
+        if(StringUtils.isBlank(password)){
+            map.put("passwordMsg","密码不能为空");
+            return map;
+        }
+        QueryWrapper queryWrapper=new QueryWrapper<>();
+        queryWrapper.eq("username",username);
+        User user=userMapper.selectOne(queryWrapper);
+        if(user==null){
+            map.put("usernameMsg","用户名不存在！");
+            return map;
+        }
+        String protectedPassword = CommunityUtil.getMd5(password + user.getSalt());
+        if(!protectedPassword.equals(user.getPassword())){
+            map.put("passwordMsg","密码错误！");
+            return map;
+        }
+
+        //生成登录凭证
+        LoginTicket loginTicket=new LoginTicket();
+        loginTicket.setUserId(user.getId());
+        loginTicket.setTicket(CommunityUtil.getUUID());
+        //浏览器传来这个ticket，去库里找，如果发现存在，并且时间对，状态对（0）,那么就能知道这个用户是谁。
+        loginTicket.setExpired(new Date(System.currentTimeMillis()+expiredSeconds*1000));
+        loginTicketMapper.insertLoginTicket(loginTicket);
+        map.put("ticket",loginTicket.getTicket());
+        return map;
+    }
+
+    @Override
+    public void logout(String ticket){
+        loginTicketMapper.updateStatus(ticket,1);
+    }
+
 
 
 }
