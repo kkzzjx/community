@@ -23,7 +23,9 @@ import javax.servlet.http.HttpSession;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import static com.example.community.utils.CommunityConstant.*;
 
@@ -41,7 +43,7 @@ public class LoginController {
     @Autowired
     Producer producer;
 
-    @Value("community.path.contextPath")
+    @Value("${community.path.contextPath}")
     private String contentPath;
 
     @GetMapping("/register")
@@ -52,6 +54,11 @@ public class LoginController {
     @GetMapping("/login")
     public String getLoginPage(){
         return "/site/login";
+    }
+
+    @GetMapping("/forget")
+    public String getForgetPasswordPage(){
+        return "site/forget";
     }
 
     @PostMapping("/register")
@@ -158,7 +165,51 @@ public class LoginController {
     @GetMapping("/logout")
     public String logout(@CookieValue("ticket")String ticket){
         userService.logout(ticket);
-        return "rediret:/site/login"; //重定向用于第二次请求；服务器将这次请求处理完了，给浏览器一个相应，并建议浏览器访问另外的组件；否则还是这个请求（path）确返回了另一个页面，会引起疑惑
+        return "redirect:/login"; //重定向用于第二次请求；服务器将这次请求处理完了，给浏览器一个相应，并建议浏览器访问另外的组件；否则还是这个请求（path）确返回了另一个页面，会引起疑惑
+    }
+
+    @GetMapping("/forget/getCode")
+    public String getCode(Model model,String email,HttpSession session){
+        String code=new Random(System.currentTimeMillis()).toString().substring(0,4);
+        session.setAttribute("code_"+email,code);
+        Map<String, Object> map = userService.getCode(email, code);
+
+        if(!map.isEmpty()){
+            model.addAttribute("emailMsg",map.get("emailMsg"));
+        }
+        return "/site/forget";
+
+    }
+
+    @PostMapping("/forget/resetPassword")
+    public String resetPassword(Model model,String email,String code,String password,HttpSession session){
+        Map<String, Object> map =new HashMap<>();
+        if(StringUtils.isBlank(code)){
+            model.addAttribute("codeMsg","验证码为空！");
+            return "/site/forget";
+        }
+        String  rightCode=(String) session.getAttribute("code_"+email);
+
+        if(!code.equalsIgnoreCase(rightCode)){
+            model.addAttribute("codeMsg","验证码错误！");
+            return "/site/forget";
+        }
+
+        map=userService.resetPassword(email, password);
+
+        if(!map.isEmpty()){
+            model.addAttribute("emailMsg",map.get("emailMsg"));
+            model.addAttribute("passwordMsg",map.get("passwordMsg"));
+            return "/site/forget";
+        }else{
+            return "redirect:/site/login";
+        }
+
+
+
+
+
+
     }
 
 

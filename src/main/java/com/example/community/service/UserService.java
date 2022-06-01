@@ -1,5 +1,6 @@
 package com.example.community.service;
 
+import com.example.community.model.LoginTicket;
 import com.example.community.model.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -45,6 +46,16 @@ public interface UserService extends IService<User> {
      */
     Map<String,Object> Login(String username,String password,int expiredSeconds);
 
-    public void logout(String ticket);
+    void logout(String ticket);
+
+    Map<String,Object> resetPassword(String email,String password);
+
+    Map<String,Object> getCode(String email,String code);
+
+    LoginTicket findLoginTicket(String ticket);
+
+    int updateHeader(int userId,String headUrl);
+
+    Map<String,Object> updatePassword(User user,String originPassword,String newPassword);
 
 }

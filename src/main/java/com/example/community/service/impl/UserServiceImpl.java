@@ -1,6 +1,5 @@
 package com.example.community.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.community.mapper.LoginTicketMapper;
@@ -186,6 +185,87 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         loginTicketMapper.updateStatus(ticket,1);
     }
 
+
+
+    @Override
+    public Map<String,Object> getCode(String email,String code){
+        Map<String,Object> map=new HashMap<>();
+        if(email==null){
+            map.put("emailMsg","邮箱未填写！");
+        }
+        QueryWrapper queryWrapper=new QueryWrapper<>();
+        queryWrapper.eq("email",email);
+        User user = userMapper.selectOne(queryWrapper);
+        if(user==null){
+            map.put("emailMsg","该邮箱未被注册！");
+            return map;
+        }
+
+        //发送html邮件 forget.html
+        Context context=new Context();
+        context.setVariable("email",user.getEmail());
+        context.setVariable("code",code);
+        String con=templateEngine.process("/mail/forget",context);
+        mailClient.sendMail(user.getEmail(),"Update your password!",con);
+
+        return map;
+
+    }
+
+    @Override
+    public Map<String,Object> resetPassword(String email,String password){
+        Map<String,Object> map=new HashMap<>();
+        //空值处理
+        if(StringUtils.isBlank(email)){
+            map.put("emailMsg","邮箱不能为空！");
+            return map;
+        }
+        if(StringUtils.isBlank(password)){
+            map.put("passwordMsg","密码不能为空！");
+            return map;
+        }
+        //验证邮箱
+        QueryWrapper queryWrapper=new QueryWrapper();
+        queryWrapper.eq("email",email);
+        User user = userMapper.selectOne(queryWrapper);
+        if(user==null){
+            map.put("emailMsg","邮箱未注册！");
+            return map;
+        }
+
+        //重置密码
+        user.setPassword(CommunityUtil.getMd5(password+user.getSalt()));
+        //持久化
+        userMapper.updateById(user);
+     //   map.put("user",user);
+        return map;
+    }
+
+
+    public LoginTicket findLoginTicket(String ticket){
+        if(ticket==null) return null;
+        LoginTicket loginTicket = loginTicketMapper.selectByTicket(ticket);
+        return loginTicket;
+    }
+
+    public int updateHeader(int userId, String headUrl){
+        User user = userMapper.selectById(userId);
+        user.setHeaderUrl(headUrl);
+        return userMapper.updateById(user);
+    }
+
+    @Override
+    public Map<String,Object> updatePassword(User user, String originPassword, String newPassword) {
+        Map<String,Object> map=new HashMap<>();
+        String originPass=CommunityUtil.getMd5(originPassword+user.getSalt());
+        if(!originPass.equals(user.getPassword())){
+            map.put("olderror","原密码输入错误！");
+        }
+        String newPass=CommunityUtil.getMd5(newPassword+user.getSalt());
+        user.setPassword(newPass);
+        userMapper.updateById(user);
+        return map;
+    }
 
 
 }
