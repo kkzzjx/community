@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.community.model.DiscussPost;
 import com.example.community.service.DiscussPostService;
 import com.example.community.mapper.DiscussPostMapper;
+import com.example.community.utils.SensitiveFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -18,6 +20,9 @@ import java.util.List;
 @Service
 public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, DiscussPost>
     implements DiscussPostService{
+    @Autowired
+    private SensitiveFilter sensitiveFilter;
+
     @Resource
     private DiscussPostMapper discussPostMapper;
 
@@ -35,6 +40,21 @@ public class DiscussPostServiceImpl extends ServiceImpl<DiscussPostMapper, Discu
         return discussPostMapper.selectDiscussPostRows(userId);
     }
 
+    @Override
+    public int addDiscussPost(DiscussPost post) {
+        if(post==null){
+            throw new IllegalArgumentException("参数不能为空");
+        }
+        //转义HTML标记  使用HtmlUtils工具即可！！ 防止xss嘛
+        post.setTitle(HtmlUtils.htmlEscape(post.getTitle()));
+        post.setContent(HtmlUtils.htmlEscape(post.getContent()));
+        //过滤敏感词
+        post.setTitle(sensitiveFilter.filter(post.getTitle()));
+        post.setContent(sensitiveFilter.filter(post.getContent()));
+
+        return discussPostMapper.insert(post);
+
+    }
 
 
 }
